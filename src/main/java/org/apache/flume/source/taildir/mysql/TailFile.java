@@ -331,10 +331,10 @@ public class TailFile {
         cacheItem.put("allLog", allLog.append(lineStr).append("\r\n"));
 
         // create event
-        Gson gson = new Gson();
         cacheItem.remove("allLog");
+        Gson gson = new Gson();
         String jsonMsg = gson.toJson(cacheItem);
-        logger.debug("readEvent["+this.getPath()+"] [sql end] "+cacheItem.get("line_user_host"));
+        logger.debug("readEvent["+this.getPath()+"] [sql end] "+jsonMsg);
 
         Event event = EventBuilder.withBody(jsonMsg.getBytes());
         if (addByteOffset == true) {
