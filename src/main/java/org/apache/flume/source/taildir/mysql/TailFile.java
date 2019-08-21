@@ -29,10 +29,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.net.InetAddress;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.net.*;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
@@ -185,18 +183,58 @@ public class TailFile {
     return events;
   }
 
+  private static List<String> getLocalIPList() {
+    List<String> ipList = new ArrayList<String>();
+    try {
+      NetworkInterface networkInterface;
+      Enumeration<InetAddress> inetAddresses;
+      InetAddress inetAddress;
+      String ip;
+      Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+      while (networkInterfaces.hasMoreElements()) {
+        networkInterface = networkInterfaces.nextElement();
+        inetAddresses = networkInterface.getInetAddresses();
+        while (inetAddresses.hasMoreElements()) {
+          inetAddress = inetAddresses.nextElement();
+          if (inetAddress != null && inetAddress instanceof Inet4Address) { // IPV4
+            ip = inetAddress.getHostAddress();
+            ipList.add(ip);
+          }
+        }
+      }
+    } catch (SocketException e) {
+      logger.error("getLocalIPList exception.", e);
+    }
+    return ipList;
+  }
+
+  private static String getLocalIPListString() {
+    StringBuffer ipListStr = new StringBuffer();
+    List<String> ipList = getLocalIPList();
+    for (String ip : ipList) {
+      if (!ip.equals("127.0.0.1")) {
+        if (ipListStr.length() <= 0) {
+          ipListStr.append(ip);
+        } else {
+          ipListStr.append(",").append(ip);
+        }
+      }
+    }
+    return ipListStr.toString();
+  }
+
   private Map<String,Object> getLocalNetworkInfo() {
     InetAddress ia=null;
     Map<String,Object> map = new HashMap<String,Object>();
     try {
-      ia=ia.getLocalHost();
+      ia=InetAddress.getLocalHost();
       String localname=ia.getHostName();
-      String localip=ia.getHostAddress();
-      map.put("server_ip", localip);
-      map.put("server_name", localname);
-    } catch (Exception e) {
-      e.printStackTrace();
+      map.put("host_name", localname);
+    } catch (UnknownHostException e) {
+      map.put("host_name", e.getMessage());
     }
+
+    map.put("host_ip", getLocalIPListString());
     return map;
   }
 
@@ -259,6 +297,7 @@ public class TailFile {
           logger.error("readEvent["+path+"] User@Host pattern failed. line="+lineStr);
           continue;
         }
+        cacheItem.put("file",path);
         cacheItem.putAll(resMap);
         cacheItem.putAll(networkMap);
 
